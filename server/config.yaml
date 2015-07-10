@@ -1,0 +1,6 @@
+# Device configurations for muni devices.
+---
+muni:
+    :a: 'sf-muni'
+    :r: 'N'
+    :s: '4448'

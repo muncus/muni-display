@@ -1,6 +1,9 @@
-require 'sinatra'
 require 'faraday'
 require 'nokogiri'
+require 'safe_yaml'
+require 'sinatra'
+
+SafeYAML::OPTIONS[:deserialize_symbols] = true
 
 BASEURL =  'http://webservices.nextbus.com/service/publicXMLFeed'
 
@@ -11,11 +14,15 @@ DEFAULTOPTS = {
   command: 'predictions',
   a: 'sf-muni',
   r: 'N',
-  s: '4448'
+  s: '4447'
 }
+
+CONFIG = YAML.load_file('config.yaml')
+p CONFIG
 
 def get_minutes(opts)
   opts = DEFAULTOPTS.merge(opts)
+  p opts
   fetch = Faraday.get(BASEURL, opts)
   predictions_in_mins = []
   xmldoc = Nokogiri::XML(fetch.body)
@@ -28,5 +35,9 @@ def get_minutes(opts)
 end
 
 get '/times/:device' do |dev|
-  return get_minutes({})[0].to_s
+  options = {}
+  if CONFIG.has_key?(dev)
+    options.merge!(CONFIG[dev])
+  end
+  return get_minutes(options)[0].to_s
 end
