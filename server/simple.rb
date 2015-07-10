@@ -1,6 +1,17 @@
 require 'faraday'
 require 'nokogiri'
+require 'optparse'
 require 'safe_yaml'
+
+options = {}
+OptionParser.new do |opts|
+  opts.on("--config FILE", "Config file containing device options") do |f|
+    options[:configfile] = File.expand_path(f)
+  end
+end.parse!
+
+
+#Note: sinatra uses OptionParser, too. this require needs to be below our option parsing.
 require 'sinatra'
 
 SafeYAML::OPTIONS[:deserialize_symbols] = true
@@ -17,7 +28,7 @@ DEFAULTOPTS = {
   s: '4447'
 }
 
-CONFIG = YAML.load_file('config.yaml')
+CONFIG = YAML.load_file(options[:configfile])
 p CONFIG
 
 def get_minutes(opts)

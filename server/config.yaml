@@ -1,6 +1,8 @@
 # Device configurations for muni devices.
+# Hash of DeviceName: (Hash of options)
+# Note that the inner hash keys must start with a colon, in order to be
+# properly treated as symbols.
 ---
 muni:
-    :a: 'sf-muni'
     :r: 'N'
     :s: '4448'
