@@ -3,13 +3,15 @@
  */
 
 
-const int MAXTIMES = 2;
 Servo gauge;
-int set_angle = 0;
-int known_times[MAXTIMES] = { 0, 10};
+int current_angle = 0;
 TCPClient client;
 unsigned long last_fetch = 0;
 int fetch_interval_s = 30;
+
+//146.148.61.247
+const IPAddress SERVER_IP(146,148,61,247);
+const int SERVER_PORT = 4567;
 
 String my_device_name = "";
 
@@ -29,7 +31,7 @@ void setup(){
 // Callback to set the device name, from the cloud.
 void name_handler(const char *topic, const char *data) {
   Serial.println("received " + String(topic) + ": " + String(data));
-  //FIXME: this is stupid, but there's no operator=(String)
+  //this is stupid, but there's no operator=(String)
   my_device_name = "" + String(data);
 }
 
@@ -38,6 +40,13 @@ void loop(){
   if(millis() > (last_fetch + (fetch_interval_s * 1000)) && !client.connected()){
     last_fetch = millis();
     Serial.println("attempting to get times.");
+    Serial.println("httpprint1");
+    int t = httpprint1();
+    //delay(1000);
+    //Serial.println("httpprint2");
+    t = httpprint2();
+    /*
+    TODO: reenable this code when i'm able to read the http response body.
     int t = justprintit();
     if(t<0){
       Serial.println("An error occurred while fetching times.");
@@ -48,6 +57,7 @@ void loop(){
       //constrain(angle, 0, 180);
       setGaugeAngle(angle);
     }
+    */
   }
 }
 
@@ -65,140 +75,125 @@ int setGaugeAngle(int angle) {
 };
 
 
-// Fetch the list of times, and return it.
-int getTime_mostlyzeroes(){
-  //146.148.61.247
-  IPAddress svr(146,148,61,247);
-  //byte svr[] = { 146, 148, 61, 247 };
-  //IPAddress svr(192,168,2,101);
-  //byte svr[] = { 192, 168, 2, 101 };
-  //client.connect(svr, 4567);
-  //client.connect("device.muniminutes-hrd.appspot.com", 80);
-
-  if(client.connect(svr, 4567)){
-    //client.println("Host: device.muniminutes-hrd.appspot.com");
-    //Serial.println("GET /times/" + my_device_name + " HTTP/1.0");
-    //NB: the \r\n ending of println() appear to make sinatra sad.
-    client.print("GET /times/" + my_device_name + " HTTP/1.0\n");
-    //client.println("Accept: text/plain");
-    //XXX: consider using a String and setCharAt() to do the parsing here.
-    //FIXME: this seems to make the core go unresponsive, and it needed a factory reset :/
-    // Figure out what happened, and fix it. - maybe doing too much network, no time for cloud?
-    client.print("\n\n");
-    delay(300);
-    char buffer[100];
-    char data_buffer[50];
-
-    for(int i=0; i<100;i++){
-      if(client.available()){
-        buffer[i] = client.read();
-        if(buffer[i] == '\n'){
-        //newline. check for empty line, or reset counter.
-          if(i < 3){
-            //empty line. body content starts here.
-            Serial.println("parsing body");
-            int j = 0;
-            while(client.available() && j < 50){
-              char c = client.read();
-              Serial.print(c);
-              data_buffer[j] = c;
-              j++;
-            }
-            client.flush();
-            client.stop();
-            return String(data_buffer).substring(0,j).toInt();
-          }
-          else {
-            //non-short line ended. resent i, start over.
-            i = 0;
-          }
-        }
-      }
-      else {
-        // no data available.
-        Serial.println("No data available. :(");
-        client.flush();
-        client.stop();
-        return -1;
-      }
-    };
+// stripped-down approach. 
+int httpprint1(){
+  if(!client.connect(SERVER_IP, SERVER_PORT)){
+    Serial.println("connect failure");
+    return -1;
   }
-}
+  client.println("GET /times/sendtoserial HTTP/1.0");
+  client.println("Host: example.com");
+  client.println("Connection: close");
+  client.println();
+  delay(200);
 
-
-int getTime_old(){
-  //146.148.61.247
-  IPAddress svr(146,148,61,247);
-  if(client.connect(svr, 4567)){
-    //NB: the \r\n ending of println() appear to make sinatra sad.
-    client.print("GET /times/" + my_device_name + " HTTP/1.0\n");
-    //client.println("Accept: text/plain");
-    client.print("\n\n");
-    delay(400);
-    char buffer[200];
-    char data_buffer[50];
-              
-    //int i = 0;
-    //while(client.available() && i<100){
-    for(int i=0;i<200;i++){
-      buffer[i] = client.read();
-      Serial.print(String(buffer[i]));
-      if(buffer[i] == '\n'){
-        //line end, check for empty.
-        //Serial.println("NEWLINE");
-        // 13 == \r
-        //Serial.println("Previous char: " + String(buffer[i-1], DEC));
-        if(i < 3){
-          //empty line.
-          //Serial.println("FOUND EMPTY");
-          Serial.println("parsing body");
-          //Serial.println("bytes remaining: "  + String(client.available()));
-          //while(j<50){
-          for(int j=0;j<50;j++){
-            char c = client.read();
-            Serial.print(c);
-            data_buffer[j] = c;
-            //j++;
-          }
-          Serial.println("DATA: " + String(data_buffer));
-          client.flush();
-          client.stop();
-          return String(data_buffer).toInt();
-        }
-        else {
-          i = 0; //reset for next line.
-        }
-      }
+  unsigned long read_start = millis();
+  unsigned long timeout = 2000;
+  bool error = false;
+  while(client.connected() && !error){
+    if(client.available()){
+      Serial.print((char)client.read());
+    }
+    if( millis() > (read_start + timeout)){
+      error = true;
+      Serial.println("timeout");
     }
   }
-  else {
-    Serial.println("Connection failed!");
-  }
-  Serial.println("error!");
-  client.flush();
   client.stop();
   return -1;
 }
-int justprintit(){
-  //146.148.61.247
-  IPAddress svr(146,148,61,247);
-  if(client.connect(svr, 4567)){
-    //NB: the \r\n ending of println() appear to make sinatra sad.
-    client.print("GET /times/" + my_device_name + " HTTP/1.0\n");
-    //client.println("Accept: text/plain");
-    client.print("\n\n");
-    delay(400);
-    char buffer[200];
-              
-    while(client.available()){
-      Serial.print(client.read());
-    }
+
+int httpprint2(){
+  unsigned long start_time = millis();
+  unsigned long timeout = 2000;
+  bool error = false;
+  if(!client.connect(SERVER_IP, SERVER_PORT)){
+    Serial.println("connect failure");
+    return -1;
   }
-  else {
+  client.write("GET /times/sendtoserial HTTP/1.0\r\n");
+  client.write("Host: example.com\r\n");
+  client.write("Connection: close\r\n");
+  client.write("\r\n");
+  delay(200);
+
+  do{
+    int bytes = client.available();
+    if(bytes){
+      Serial.print("Bytes available: ");
+      Serial.println(bytes);
+    }
+    if(millis() >= (start_time + timeout)){
+      Serial.println("timeout");
+      error = true;
+    }
+    while(client.available()){
+      char c = client.read();
+      Serial.print(c);
+    }
+    delay(300);
+  } while(client.connected() && !error );
+  client.stop();
+  return -1;
+};
+// Fetch the next arrival from the server.
+int justprintit(){
+  if(client.connect(SERVER_IP, SERVER_PORT)){
+    client.println("GET /times/" + my_device_name + " HTTP/1.0");
+    //client.println("Accept: text/plain");
+    //client.println("Connection: close");
+    client.println();
+    client.println();
+    //client.flush();
+    delay(400);
+
+    //char buffer[500];
+    //memset(&buffer[0], 0, sizeof(buffer));
+              
+    boolean error = false;
+    int buf_pos = 0;
+    unsigned long timeout_ms = 5000;
+    unsigned long start_time = millis();
+
+    do{
+      int bytes = client.available();
+      if(bytes){
+        Serial.print("Bytes available: ");
+        Serial.println(bytes);
+      }
+
+      if(millis() >= (start_time + timeout_ms)){
+        Serial.println("timeout");
+        error = true;
+        //break;
+      }
+
+      while(client.available()){
+        /*
+        if(buf_pos == sizeof(buffer)-1){
+          Serial.println("buffer full.");
+          error = true;
+          break;
+        }
+        */
+        char c = client.read();
+        //buffer[buf_pos] = c;
+        if( c == -1){
+          Serial.println("error");
+          error = true;
+          break;
+        }
+        Serial.print(c);
+      }
+      delay(300);
+    } while(client.connected() && !error );
+    //buffer[++buf_pos] = '\0';
+    //Serial.println("Buffer:");
+    //Serial.print(String(buffer).substring(0,buf_pos));
+    //client.stop();
+  } else {
     Serial.println("Connection failed!");
   }
-  Serial.println("error!");
-  client.flush();
   client.stop();
   return -1;
 }
