@@ -10,7 +10,8 @@ services to display arrival times as a gauge using a servo.
 ## To Do
 
 ### Device
-- [ ] find bug with reading http body
+- [x] find bug with reading http body
+- [ ] handle non-200 error codes gracefully.
 - [ ] change servo delay based on angle delta
 - [ ] unit tests
 - [ ] Build muni train enclosure
