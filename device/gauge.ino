@@ -43,11 +43,7 @@ void loop(){
     Serial.println("httpprint1");
     int t = httpprint1();
     //delay(1000);
-    //Serial.println("httpprint2");
-    t = httpprint2();
-    /*
-    TODO: reenable this code when i'm able to read the http response body.
-    int t = justprintit();
+    //TODO: reenable this code when i'm able to read the http response body.
     if(t<0){
       Serial.println("An error occurred while fetching times.");
     } else {
@@ -57,7 +53,6 @@ void loop(){
       //constrain(angle, 0, 180);
       setGaugeAngle(angle);
     }
-    */
   }
 }
 
@@ -77,11 +72,14 @@ int setGaugeAngle(int angle) {
 
 // stripped-down approach. 
 int httpprint1(){
+  char buffer[500];
+  int bpos = 0;
+
   if(!client.connect(SERVER_IP, SERVER_PORT)){
     Serial.println("connect failure");
     return -1;
   }
-  client.println("GET /times/sendtoserial HTTP/1.0");
+  client.println("GET /times/" + my_device_name + " HTTP/1.0");
   client.println("Host: example.com");
   client.println("Connection: close");
   client.println();
@@ -92,7 +90,10 @@ int httpprint1(){
   bool error = false;
   while(client.connected() && !error){
     if(client.available()){
-      Serial.print((char)client.read());
+      char c = client.read();
+      //Serial.print(c);
+      buffer[bpos] = c;
+      bpos++;
     }
     if( millis() > (read_start + timeout)){
       error = true;
@@ -100,7 +101,15 @@ int httpprint1(){
     }
   }
   client.stop();
-  return -1;
+  buffer[bpos] = '\0';
+  String full_response(buffer);
+  Serial.println(full_response);
+  int bodystart = full_response.indexOf("\r\n\r\n") + 4;
+  if(bodystart < 0){
+    return bodystart;
+  } else {
+    return full_response.substring(bodystart, full_response.length()).toInt();
+  }
 }
 
 int httpprint2(){
