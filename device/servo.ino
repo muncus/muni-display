@@ -1,19 +1,27 @@
-/* Remote-control a servo for showing time until next train arrival.
- * 
+/* Control a servo for showing time until next train arrival.
+ *
  */
 
-Servo gauge;
-int current_angle = 0;
-TCPClient client;
-unsigned long last_fetch = 0;
-int fetch_interval_s = 30;
 
+// time between fetch attempts, in seconds.
+const int fetch_interval_s = 30;
+
+// max value for wait time of next train.
+// any wait times longer than this will be rounded down.
+const int MAX_WAIT_TIME = 30;
+
+// Server address/port.
 //146.148.61.247
 const IPAddress SERVER_IP(146,148,61,247);
 const int SERVER_PORT = 4567;
 
 // populated by the callback name_handler below.
 String my_device_name = "";
+
+Servo gauge;
+int current_angle = 0;
+TCPClient client;
+unsigned long last_fetch = 0;
 
 void setup(){
   Serial.begin(9600);
@@ -25,6 +33,14 @@ void setup(){
 
   Spark.subscribe("spark/device/name", name_handler);
   Spark.publish("spark/device/name");
+
+  // Warm up with a full-range test with the servo.
+  gauge.attach(D0);
+  gauge.write(0);
+  delay(1000);
+  gauge.write(180);
+  delay(1000);
+  gauge.detach();
 
 }
 
@@ -47,7 +63,9 @@ void loop(){
       Serial.println("An error occurred while fetching times.");
     } else {
       Serial.println("Got: " + String(t));
-      int angle = map(t, 0, 30, 0, 180);
+      // If the servo goes the other way, try this instead:
+      // int angle = map(t, 0, MAX_WAIT_TIME, 0, 180);
+      int angle = map(t, 0, MAX_WAIT_TIME, 180, 0);
       Serial.println("angle: " + String(angle));
       //constrain(angle, 0, 180);
       setGaugeAngle(angle);
@@ -61,9 +79,12 @@ int setGaugeAngle(int angle) {
   if(requested_angle > 180 || requested_angle < 0){
     return -1;
   }
-  //set_angle = requested_angle;
   gauge.write(requested_angle);
-  delay(700);
+  // make the sleep relative to how much distance the servo needs to travel.
+  // somewhere between 20ms and 700ms.
+  int sleeptime = map(abs(current_angle - requested_angle), 0, 180, 20, 700);
+  delay(sleeptime);
+  current_angle = requested_angle;
   gauge.detach();
   return 1;
 };
