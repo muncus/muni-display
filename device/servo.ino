@@ -2,6 +2,11 @@
  *
  */
 
+/* from http://docs.particle.io/core/firmware/:
+ * on the Core, Servo can be connected to A0, A1, A4, A5, A6, A7, D0, and D1.
+ * on the Photon, Servo can be connected to A4, A5, WKP, RX, TX, D0, D1, D2, D3
+ */
+const int SERVO_PIN = D0;
 
 // time between fetch attempts, in seconds.
 const int fetch_interval_s = 30;
@@ -35,7 +40,7 @@ void setup(){
   Spark.publish("spark/device/name");
 
   // Warm up with a full-range test with the servo.
-  gauge.attach(D0);
+  gauge.attach(SERVO_PIN);
   gauge.write(0);
   delay(1000);
   gauge.write(180);
@@ -74,7 +79,7 @@ void loop(){
 }
 
 int setGaugeAngle(int angle) {
-  gauge.attach(D0);
+  gauge.attach(SERVO_PIN);
   int requested_angle = angle;
   if(requested_angle > 180 || requested_angle < 0){
     return -1;
