@@ -6,7 +6,7 @@
  * on the Core, Servo can be connected to A0, A1, A4, A5, A6, A7, D0, and D1.
  * on the Photon, Servo can be connected to A4, A5, WKP, RX, TX, D0, D1, D2, D3
  */
-const int SERVO_PIN = D0;
+const int SERVO_PIN = A7;
 
 // time between fetch attempts, in seconds.
 const int fetch_interval_s = 30;
