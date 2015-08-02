@@ -39,6 +39,10 @@ void setup(){
   Spark.subscribe("spark/device/name", name_handler);
   Spark.publish("spark/device/name");
 
+  // Allow for remote setting of angle.
+  Spark.function("setAngle", setAngle);
+  Spark.variable("angle", &current_angle, INT);
+
   // Warm up with a full-range test with the servo.
   gauge.attach(SERVO_PIN);
   gauge.write(0);
@@ -55,6 +59,13 @@ void name_handler(const char *topic, const char *data) {
   //this is stupid, but there's no operator=(String)
   my_device_name = "" + String(data);
 }
+
+// Consider also stopping the period angle updates once this is called.
+int setAngle(String str_angle){
+  int angle = str_angle.toInt();
+  return setGaugeAngle(angle);
+}
+
 
 void loop(){
 
