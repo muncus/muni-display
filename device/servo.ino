@@ -81,6 +81,10 @@ void loop(){
       Serial.println("Got: " + String(t));
       // If the servo goes the other way, try this instead:
       // int angle = map(t, 0, MAX_WAIT_TIME, 0, 180);
+      // Round down, to avoid overflow.
+      if(t > MAX_WAIT_TIME){
+        t = MAX_WAIT_TIME;
+      }
       int angle = map(t, 0, MAX_WAIT_TIME, 180, 0);
       Serial.println("angle: " + String(angle));
       //constrain(angle, 0, 180);
