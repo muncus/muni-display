@@ -17,9 +17,11 @@ end.parse!
 #Note: sinatra uses OptionParser, too. this require needs to be below our option parsing.
 require 'sinatra'
 
+SafeYAML::OPTIONS[:default_mode] = :safe
 SafeYAML::OPTIONS[:deserialize_symbols] = true
 
-BASEURL =  'http://webservices.nextbus.com/service/publicXMLFeed'
+BASEURL =  'http://webservices.nextbus.com'
+URL_PATH = '/service/publicXMLFeed'
 
 #http://webservices.nextbus.com/service/publicXMLFeed?command=predictions&a=sf-muni&r=N
 # inbound duboce and church: 4448
@@ -37,7 +39,7 @@ p CONFIG
 def get_minutes(opts)
   opts = DEFAULTOPTS.merge(opts)
   p opts
-  fetch = Faraday.get(BASEURL, opts)
+  fetch = Faraday.new(BASEURL, {request: {open_timeout: 5}}).get(URL_PATH, opts)
   predictions_in_mins = []
   xmldoc = Nokogiri::XML(fetch.body)
   xmldoc.remove_namespaces!()
