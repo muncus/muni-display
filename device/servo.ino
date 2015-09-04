@@ -2,6 +2,12 @@
  *
  */
 
+// Server address/port.
+//146.148.61.247
+const IPAddress SERVER_IP(146,148,61,247);
+const char* SERVER_ADDR = "muni.marcdougherty.com";
+const int SERVER_PORT = 4567;
+
 /* from http://docs.particle.io/core/firmware/:
  * on the Core, Servo can be connected to A0, A1, A4, A5, A6, A7, D0, and D1.
  * on the Photon, Servo can be connected to A4, A5, WKP, RX, TX, D0, D1, D2, D3
@@ -15,12 +21,6 @@ const int fetch_interval_s = 30;
 // any wait times longer than this will be rounded down.
 const int MAX_WAIT_TIME = 30;
 
-// Server address/port.
-//146.148.61.247
-const IPAddress SERVER_IP(146,148,61,247);
-const char* SERVER_ADDR = "muni.marcdougherty.com";
-const int SERVER_PORT = 4567;
-
 // populated by the callback name_handler below.
 String my_device_name = "";
 
@@ -29,8 +29,16 @@ int current_angle = -1;
 TCPClient client;
 unsigned long last_fetch = 0;
 
+// store the last time the "activate" button was pushed.
+const int WAKEUP_PIN = A6;
+unsigned long last_button_push = 0;
+const int BUTTON_ACTIVATION_TIME_MS = 60 * 60 * 1000;
+const bool REQUIRE_BUTTON_PRESS = true;
+
 void setup(){
   Serial.begin(9600);
+
+  pinMode(WAKEUP_PIN, INPUT_PULLUP);
 
   for(int i=0;i<5;i++) {
       Serial.println("waiting... " + String(5 - i));
@@ -69,6 +77,19 @@ int setAngle(String str_angle){
 
 
 void loop(){
+
+  // Check for button press
+  if(digitalRead(WAKEUP_PIN) == LOW){
+    delay(100);
+    last_button_push = millis();
+  }
+
+  // Exit loop early if we are not active.
+  if(REQUIRE_BUTTON_PRESS && 
+      ((millis() - last_button_push) > BUTTON_ACTIVATION_TIME_MS)){
+    // No work to do.
+    return;
+  }
 
   if(millis() > (last_fetch + (fetch_interval_s * 1000)) && !client.connected()){
     last_fetch = millis();
@@ -149,7 +170,7 @@ int getNextArrivalTime(){
   String full_response(buffer);
   Serial.println(full_response);
   int bodystart = full_response.indexOf("\r\n\r\n") + 4;
-  if(bodystart < 0 || bodystart == full_response.length()){
+  if(error || bodystart < 0 || bodystart == full_response.length()){
     return -1;
   } else {
     return full_response.substring(bodystart, full_response.length()).toInt();
