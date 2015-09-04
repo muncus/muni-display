@@ -23,6 +23,8 @@ SafeYAML::OPTIONS[:deserialize_symbols] = true
 BASEURL =  'http://webservices.nextbus.com'
 URL_PATH = '/service/publicXMLFeed'
 
+set :bind, '0.0.0.0'
+
 #http://webservices.nextbus.com/service/publicXMLFeed?command=predictions&a=sf-muni&r=N
 # inbound duboce and church: 4448
 
