@@ -18,6 +18,7 @@ const int MAX_WAIT_TIME = 30;
 // Server address/port.
 //146.148.61.247
 const IPAddress SERVER_IP(146,148,61,247);
+const char* SERVER_ADDR = "muni.marcdougherty.com";
 const int SERVER_PORT = 4567;
 
 // populated by the callback name_handler below.
@@ -72,7 +73,6 @@ void loop(){
   if(millis() > (last_fetch + (fetch_interval_s * 1000)) && !client.connected()){
     last_fetch = millis();
     Serial.println("attempting to get times.");
-    Serial.println("httpprint1");
     int t = getNextArrivalTime();
     //delay(1000);
     if(t<0){
@@ -111,12 +111,12 @@ int getNextArrivalTime(){
   char buffer[500];
   int bpos = 0;
 
-  if(!client.connect(SERVER_IP, SERVER_PORT)){
+  if(!client.connect(SERVER_ADDR, SERVER_PORT)){
     Serial.println("connect failure");
     return -1;
   }
   client.println("GET /times/" + my_device_name + " HTTP/1.0");
-  client.println("Host: example.com");
+  client.println("Host: " + String(SERVER_ADDR));
   client.println("Connection: close");
   client.println();
   delay(200);
@@ -141,8 +141,8 @@ int getNextArrivalTime(){
   String full_response(buffer);
   Serial.println(full_response);
   int bodystart = full_response.indexOf("\r\n\r\n") + 4;
-  if(bodystart < 0){
-    return bodystart;
+  if(bodystart < 0 || bodystart == full_response.length()){
+    return -1;
   } else {
     return full_response.substring(bodystart, full_response.length()).toInt();
   }
