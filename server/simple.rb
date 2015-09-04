@@ -1,3 +1,6 @@
+# Server side of muni display. Serves simple number of mins to next train.
+# Configuration file maps a url path to a set of nextbus query options. 
+# see the full nextbus api spec linked from README.md for available options.
 require 'faraday'
 require 'nokogiri'
 require 'optparse'
