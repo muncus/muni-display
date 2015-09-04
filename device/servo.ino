@@ -25,7 +25,7 @@ const int SERVER_PORT = 4567;
 String my_device_name = "";
 
 Servo gauge;
-int current_angle = 0;
+int current_angle = -1;
 TCPClient client;
 unsigned long last_fetch = 0;
 
@@ -101,8 +101,12 @@ int setGaugeAngle(int angle) {
   }
   gauge.write(requested_angle);
   // make the sleep relative to how much distance the servo needs to travel.
-  // somewhere between 20ms and 700ms.
-  int sleeptime = map(abs(current_angle - requested_angle), 0, 180, 20, 700);
+  // somewhere between 20ms and 1000ms.
+  // if current_angle is unknown (as on the initial run), give it all the time.
+  int sleeptime = map(abs(current_angle - requested_angle), 0, 180, 20, 1000);
+  if(current_angle < 0){
+    sleeptime = 1000;
+  }
   delay(sleeptime);
   current_angle = requested_angle;
   gauge.detach();
