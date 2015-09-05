@@ -35,14 +35,22 @@ unsigned long last_fetch = 0;
 // store the last time the "activate" button was pushed.
 const int WAKEUP_PIN = A6;
 unsigned long last_button_push = 0;
-//const unsigned long BUTTON_ACTIVATION_TIME_MS = 60 * 60 * 1000;
-const unsigned long BUTTON_ACTIVATION_TIME_MS = 5 * 60 * 1000;
+const unsigned long BUTTON_ACTIVATION_TIME_MS = 30 * 60 * 1000;
 const bool REQUIRE_BUTTON_PRESS = true;
+const int ACTIVE_INDICATOR_PIN = D7;
+
+// Depending on the servo orientation, these may need swapping.
+const int MIN_SERVO_POSITION = 180;
+const int MAX_SERVO_POSITION = 0;
+// These are milliseconds
+const int MIN_SERVO_TIME = 20;
+const int MAX_SERVO_TIME = 1000;
 
 void setup(){
   Serial.begin(9600);
 
   pinMode(WAKEUP_PIN, INPUT_PULLUP);
+  pinMode(ACTIVE_INDICATOR_PIN, OUTPUT);
 
   for(int i=0;i<5;i++) {
       Serial.println("waiting... " + String(5 - i));
@@ -53,15 +61,15 @@ void setup(){
   Spark.publish("spark/device/name");
 
   // Allow for remote setting of angle.
-  Spark.function("setAngle", setAngle);
+  Spark.function("setAngle", setAngleCallback);
   Spark.variable("angle", &current_angle, INT);
 
   // Warm up with a full-range test with the servo.
   gauge.attach(SERVO_PIN);
-  gauge.write(0);
-  delay(1000);
-  gauge.write(180);
-  delay(1000);
+  gauge.write(MAX_SERVO_POSITION);
+  delay(MAX_SERVO_TIME);
+  gauge.write(MIN_SERVO_POSITION);
+  delay(MAX_SERVO_TIME);
   gauge.detach();
 
 }
@@ -73,8 +81,9 @@ void name_handler(const char *topic, const char *data) {
   my_device_name = "" + String(data);
 }
 
+// Cloud function, called to set angle.
 // Consider also stopping the period angle updates once this is called.
-int setAngle(String str_angle){
+int setAngleCallback(String str_angle){
   int angle = str_angle.toInt();
   return setGaugeAngle(angle);
 }
@@ -84,11 +93,11 @@ void loop(){
 
   unsigned long current_time = millis();
 
-#ifdef DEBUG_TO_SERIAL
+  #ifdef DEBUG_TO_SERIAL
   Serial.println("current time: " + String(current_time));
   Serial.println("last fetch: " + String(last_fetch));
   Serial.println("last press: " + String(last_button_push));
-#endif
+  #endif
 
   // Exit loop early if we are not active.
   if(REQUIRE_BUTTON_PRESS){
@@ -97,10 +106,14 @@ void loop(){
       delay(100);
       Serial.println("button pressed!");
       last_button_push = current_time;
+      digitalWrite(ACTIVE_INDICATOR_PIN, HIGH);
       updateArrivalTime();
     }
-    if ((current_time - last_button_push) > BUTTON_ACTIVATION_TIME_MS || last_button_push == 0){
+    if ((current_time - last_button_push) > BUTTON_ACTIVATION_TIME_MS ||
+        last_button_push == 0){
       // No work to do.
+      // Disable indicator light.
+      digitalWrite(ACTIVE_INDICATOR_PIN, LOW);
       delay(100);
       #ifdef DEBUG_TO_SERIAL
       Serial.println("skipped doing work.");
@@ -108,7 +121,8 @@ void loop(){
       return;
     }
   }
-  if(millis() > (last_fetch + (fetch_interval_s * 1000)) && !client.connected()){
+  if(millis() > (last_fetch + (fetch_interval_s * 1000)) &&
+     !client.connected()){
     updateArrivalTime();
   }
 }
@@ -117,6 +131,8 @@ void updateArrivalTime(){
     last_fetch = millis();
     Serial.println("attempting to get times.");
     int t = getNextArrivalTime();
+    // publish the time we parsed, for viewing in the dashboard.
+    Spark.publish("time-received", String(t), 60, PRIVATE);
     if(t<0){
       Serial.println("An error occurred while fetching times.");
     } else {
@@ -127,7 +143,9 @@ void updateArrivalTime(){
       if(t > MAX_WAIT_TIME){
         t = MAX_WAIT_TIME;
       }
-      int angle = map(t, 0, MAX_WAIT_TIME, 180, 0);
+      int angle = map(t,
+                      0, MAX_WAIT_TIME,
+                      MIN_SERVO_POSITION, MAX_SERVO_POSITION);
       Serial.println("angle: " + String(angle));
       //constrain(angle, 0, 180);
       setGaugeAngle(angle);
@@ -144,9 +162,11 @@ int setGaugeAngle(int angle) {
   // make the sleep relative to how much distance the servo needs to travel.
   // somewhere between 20ms and 1000ms.
   // if current_angle is unknown (as on the initial run), give it all the time.
-  int sleeptime = map(abs(current_angle - requested_angle), 0, 180, 20, 1000);
+  int sleeptime = map(abs(current_angle - requested_angle),
+                      0, 180,
+                      MIN_SERVO_TIME, MAX_SERVO_TIME);
   if(current_angle < 0){
-    sleeptime = 1000;
+    sleeptime = MAX_SERVO_TIME;
   }
   delay(sleeptime);
   current_angle = requested_angle;
