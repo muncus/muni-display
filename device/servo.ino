@@ -15,7 +15,7 @@ const int SERVER_PORT = 4567;
 const int SERVO_PIN = A7;
 
 // time between fetch attempts, in seconds.
-const int fetch_interval_s = 30;
+const unsigned long fetch_interval_s = 30;
 
 // max value for wait time of next train.
 // any wait times longer than this will be rounded down.
@@ -29,10 +29,14 @@ int current_angle = -1;
 TCPClient client;
 unsigned long last_fetch = 0;
 
+// Uncomment this for lots of extra serial output.
+//#define DEBUG_TO_SERIAL
+
 // store the last time the "activate" button was pushed.
 const int WAKEUP_PIN = A6;
 unsigned long last_button_push = 0;
-const int BUTTON_ACTIVATION_TIME_MS = 60 * 60 * 1000;
+//const unsigned long BUTTON_ACTIVATION_TIME_MS = 60 * 60 * 1000;
+const unsigned long BUTTON_ACTIVATION_TIME_MS = 5 * 60 * 1000;
 const bool REQUIRE_BUTTON_PRESS = true;
 
 void setup(){
@@ -78,24 +82,41 @@ int setAngle(String str_angle){
 
 void loop(){
 
-  // Check for button press
-  if(digitalRead(WAKEUP_PIN) == LOW){
-    delay(100);
-    last_button_push = millis();
-  }
+  unsigned long current_time = millis();
+
+#ifdef DEBUG_TO_SERIAL
+  Serial.println("current time: " + String(current_time));
+  Serial.println("last fetch: " + String(last_fetch));
+  Serial.println("last press: " + String(last_button_push));
+#endif
 
   // Exit loop early if we are not active.
-  if(REQUIRE_BUTTON_PRESS && 
-      ((millis() - last_button_push) > BUTTON_ACTIVATION_TIME_MS)){
-    // No work to do.
-    return;
+  if(REQUIRE_BUTTON_PRESS){
+    // Check for button press
+    if(digitalRead(WAKEUP_PIN) == LOW){
+      delay(100);
+      Serial.println("button pressed!");
+      last_button_push = current_time;
+      updateArrivalTime();
+    }
+    if ((current_time - last_button_push) > BUTTON_ACTIVATION_TIME_MS || last_button_push == 0){
+      // No work to do.
+      delay(100);
+      #ifdef DEBUG_TO_SERIAL
+      Serial.println("skipped doing work.");
+      #endif
+      return;
+    }
   }
-
   if(millis() > (last_fetch + (fetch_interval_s * 1000)) && !client.connected()){
+    updateArrivalTime();
+  }
+}
+
+void updateArrivalTime(){
     last_fetch = millis();
     Serial.println("attempting to get times.");
     int t = getNextArrivalTime();
-    //delay(1000);
     if(t<0){
       Serial.println("An error occurred while fetching times.");
     } else {
@@ -111,7 +132,6 @@ void loop(){
       //constrain(angle, 0, 180);
       setGaugeAngle(angle);
     }
-  }
 }
 
 int setGaugeAngle(int angle) {
@@ -151,7 +171,7 @@ int getNextArrivalTime(){
   delay(200);
 
   unsigned long read_start = millis();
-  unsigned long timeout = 2000;
+  unsigned long timeout = 4000;
   bool error = false;
   while(client.connected() && !error){
     if(client.available()){
@@ -159,6 +179,9 @@ int getNextArrivalTime(){
       //Serial.print(c);
       buffer[bpos] = c;
       bpos++;
+    }
+    else {
+      delay(5);
     }
     if( millis() > (read_start + timeout)){
       error = true;
@@ -168,7 +191,9 @@ int getNextArrivalTime(){
   client.stop();
   buffer[bpos] = '\0';
   String full_response(buffer);
+  #ifdef DEBUG_TO_SERIAL
   Serial.println(full_response);
+  #endif
   int bodystart = full_response.indexOf("\r\n\r\n") + 4;
   if(error || bodystart < 0 || bodystart == full_response.length()){
     return -1;
