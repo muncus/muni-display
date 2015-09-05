@@ -45,7 +45,7 @@ is symbolized properly) are arguments added to the nextbus xml feed request.
 - [ ] unit tests
 - [ ] Build muni train enclosure
 - [ ] add LEDs for lighting up when time is running short.
-- [ ] add selective activation, so it doesnt run all day/night.
+- [x] add selective activation, so it doesnt run all day/night.
 
 ### Server
 - [x] Allow multiple devices
