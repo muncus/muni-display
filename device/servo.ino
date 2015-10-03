@@ -12,7 +12,9 @@ const int SERVER_PORT = 4567;
  * on the Core, Servo can be connected to A0, A1, A4, A5, A6, A7, D0, and D1.
  * on the Photon, Servo can be connected to A4, A5, WKP, RX, TX, D0, D1, D2, D3
  */
-const int SERVO_PIN = A7;
+const int SERVO_PIN = D0;
+const int LEFT_HEADLIGHT = A0;
+const int RIGHT_HEADLIGHT = A1;
 
 // time between fetch attempts, in seconds.
 const unsigned long fetch_interval_s = 30;
@@ -33,10 +35,11 @@ unsigned long last_fetch = 0;
 //#define DEBUG_TO_SERIAL
 
 // store the last time the "activate" button was pushed.
-const int WAKEUP_PIN = A6;
+const int WAKEUP_PIN = D5;
 unsigned long last_button_push = 0;
-const unsigned long BUTTON_ACTIVATION_TIME_MS = 30 * 60 * 1000;
-const bool REQUIRE_BUTTON_PRESS = true;
+//const unsigned long BUTTON_ACTIVATION_TIME_MS = 30 * 60 * 1000;
+const unsigned long BUTTON_ACTIVATION_TIME_MS = 5 * 60 * 1000;
+const bool POWER_SAVE = false;
 const int ACTIVE_INDICATOR_PIN = D7;
 
 // Depending on the servo orientation, these may need swapping.
@@ -51,6 +54,8 @@ void setup(){
 
   pinMode(WAKEUP_PIN, INPUT_PULLUP);
   pinMode(ACTIVE_INDICATOR_PIN, OUTPUT);
+  pinMode(LEFT_HEADLIGHT, OUTPUT);
+  pinMode(RIGHT_HEADLIGHT, OUTPUT);
 
   for(int i=0;i<5;i++) {
       Serial.println("waiting... " + String(5 - i));
@@ -99,31 +104,36 @@ void loop(){
   Serial.println("last press: " + String(last_button_push));
   #endif
 
-  // Exit loop early if we are not active.
-  if(REQUIRE_BUTTON_PRESS){
-    // Check for button press
-    if(digitalRead(WAKEUP_PIN) == LOW){
-      delay(100);
-      Serial.println("button pressed!");
-      last_button_push = current_time;
-      digitalWrite(ACTIVE_INDICATOR_PIN, HIGH);
+  // Check for button press
+  if(digitalRead(WAKEUP_PIN) == LOW){
+    delay(100);
+    Serial.println("button pressed!");
+    Spark.publish("button pressed!");
+    last_button_push = current_time;
+  }
+
+  int time_since_push = current_time - last_button_push;
+  if (time_since_push < BUTTON_ACTIVATION_TIME_MS &&
+      last_button_push > 0){
+    digitalWrite(ACTIVE_INDICATOR_PIN, HIGH);
+
+    // Fade headlights in line with remaining activation time.
+    int brightness = map(time_since_push, 0, BUTTON_ACTIVATION_TIME_MS, 200, 0);
+    analogWrite(LEFT_HEADLIGHT, brightness);
+    analogWrite(RIGHT_HEADLIGHT, brightness);
+
+    if(millis() > (last_fetch + (fetch_interval_s * 1000)) &&
+       !client.connected()){
       updateArrivalTime();
     }
-    if ((current_time - last_button_push) > BUTTON_ACTIVATION_TIME_MS ||
-        last_button_push == 0){
-      // No work to do.
-      // Disable indicator light.
-      digitalWrite(ACTIVE_INDICATOR_PIN, LOW);
-      delay(100);
-      #ifdef DEBUG_TO_SERIAL
-      Serial.println("skipped doing work.");
-      #endif
-      return;
-    }
-  }
-  if(millis() > (last_fetch + (fetch_interval_s * 1000)) &&
-     !client.connected()){
-    updateArrivalTime();
+  } else {
+    // No work to do.
+    // Disable indicator light.
+    analogWrite(LEFT_HEADLIGHT, 0);
+    analogWrite(RIGHT_HEADLIGHT, 0);
+    digitalWrite(ACTIVE_INDICATOR_PIN, LOW);
+    delay(100);
+    return;
   }
 }
 
