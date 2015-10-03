@@ -37,8 +37,8 @@ unsigned long last_fetch = 0;
 // store the last time the "activate" button was pushed.
 const int WAKEUP_PIN = D5;
 unsigned long last_button_push = 0;
-//const unsigned long BUTTON_ACTIVATION_TIME_MS = 30 * 60 * 1000;
-const unsigned long BUTTON_ACTIVATION_TIME_MS = 5 * 60 * 1000;
+const unsigned long BUTTON_ACTIVATION_TIME_MS = 30 * 60 * 1000;
+//const unsigned long BUTTON_ACTIVATION_TIME_MS = 5 * 60 * 1000;
 const bool POWER_SAVE = false;
 const int ACTIVE_INDICATOR_PIN = D7;
 
