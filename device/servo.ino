@@ -99,9 +99,9 @@ void loop(){
   unsigned long current_time = millis();
 
   #ifdef DEBUG_TO_SERIAL
-  Serial.println("current time: " + String(current_time));
-  Serial.println("last fetch: " + String(last_fetch));
-  Serial.println("last press: " + String(last_button_push));
+    Serial.println("current time: " + String(current_time));
+    Serial.println("last fetch: " + String(last_fetch));
+    Serial.println("last press: " + String(last_button_push));
   #endif
 
   // Check for button press
@@ -121,6 +121,8 @@ void loop(){
     int brightness = map(time_since_push, 0, BUTTON_ACTIVATION_TIME_MS, 200, 0);
     analogWrite(LEFT_HEADLIGHT, brightness);
     analogWrite(RIGHT_HEADLIGHT, brightness);
+
+    delay(100);
 
     if(millis() > (last_fetch + (fetch_interval_s * 1000)) &&
        !client.connected()){
@@ -198,7 +200,7 @@ int getNextArrivalTime(){
   client.println("Host: " + String(SERVER_ADDR));
   client.println("Connection: close");
   client.println();
-  delay(200);
+  delay(300);
 
   unsigned long read_start = millis();
   unsigned long timeout = 4000;
@@ -211,7 +213,7 @@ int getNextArrivalTime(){
       bpos++;
     }
     else {
-      delay(5);
+      delay(10);
     }
     if( millis() > (read_start + timeout)){
       error = true;
@@ -222,7 +224,7 @@ int getNextArrivalTime(){
   buffer[bpos] = '\0';
   String full_response(buffer);
   #ifdef DEBUG_TO_SERIAL
-  Serial.println(full_response);
+    Serial.println(full_response);
   #endif
   int bodystart = full_response.indexOf("\r\n\r\n") + 4;
   if(error || bodystart < 0 || bodystart == full_response.length()){
