@@ -108,7 +108,7 @@ void loop(){
   if(digitalRead(WAKEUP_PIN) == LOW){
     delay(100);
     Serial.println("button pressed!");
-    Spark.publish("button pressed!");
+    Spark.publish("button-pressed");
     last_button_push = current_time;
   }
 
@@ -124,9 +124,12 @@ void loop(){
 
     delay(100);
 
-    if(millis() > (last_fetch + (fetch_interval_s * 1000)) &&
-       !client.connected()){
-      updateArrivalTime();
+    if(millis() > (last_fetch + (fetch_interval_s * 1000))){
+      if(client.connected()){
+        Spark.publish("error", "client still connected");
+      } else {
+        updateArrivalTime();
+      }
     }
   } else {
     // No work to do.
@@ -217,6 +220,7 @@ int getNextArrivalTime(){
     }
     if( millis() > (read_start + timeout)){
       error = true;
+      Spark.publish("error", "timeout");
       Serial.println("timeout");
     }
   }
