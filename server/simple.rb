@@ -32,7 +32,8 @@ DEFAULTOPTS = {
   command: 'predictions',
   a: 'sf-muni',
   r: 'N',
-  s: '4447'
+  s: '4447',
+  direction_title: 'Inbound to Caltrain via Downtown',
 }
 
 CONFIG = YAML.load_file(options[:configfile])
@@ -45,7 +46,8 @@ def get_minutes(opts)
   predictions_in_mins = []
   xmldoc = Nokogiri::XML(fetch.body)
   xmldoc.remove_namespaces!()
-  xmldoc.css("predictions direction prediction").each do |node|
+  #TODO: improve direction filtering.
+  xmldoc.css("predictions direction[title='#{opts[:direction_title]}'] prediction").each do |node|
     predictions_in_mins << node['minutes'].to_i
   end
   p predictions_in_mins.sort()
