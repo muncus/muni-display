@@ -46,11 +46,15 @@ def get_minutes(opts)
   predictions_in_mins = []
   xmldoc = Nokogiri::XML(fetch.body)
   xmldoc.remove_namespaces!()
-  #TODO: improve direction filtering.
+  #TODO: improve direction filtering. predictions have dirTag="N____I_F00" maybe?
   xmldoc.css("predictions direction[title='#{opts[:direction_title]}'] prediction").each do |node|
     predictions_in_mins << node['minutes'].to_i
   end
   p predictions_in_mins.sort()
+  if predictions_in_mins.length == 0
+    # No predictions found. return an unreasonable number.
+    return [ 99 ]
+  end
   return predictions_in_mins.sort()
 end
 
