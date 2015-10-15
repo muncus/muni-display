@@ -43,9 +43,10 @@ is symbolized properly) are arguments added to the nextbus xml feed request.
 - [ ] handle non-200 error codes gracefully.
 - [x] change servo delay based on angle delta
 - [ ] unit tests
-- [ ] Build muni train enclosure
-- [ ] add LEDs for lighting up when time is running short.
+- [x] Build muni train enclosure
+- [x] add LEDs for lighting up when time is running short.
 - [x] add selective activation, so it doesnt run all day/night.
+- [ ] implement sleep mode to allow for battery operation.
 
 ### Server
 - [x] Allow multiple devices
