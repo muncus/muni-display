@@ -68,6 +68,7 @@ void setup(){
   // Allow for remote setting of angle.
   Spark.function("setAngle", setAngleCallback);
   Spark.variable("angle", &current_angle, INT);
+  Spark.function("activate", enableTrainPolling);
 
   // Warm up with a full-range test with the servo.
   gauge.attach(SERVO_PIN);
@@ -91,6 +92,13 @@ void name_handler(const char *topic, const char *data) {
 int setAngleCallback(String str_angle){
   int angle = str_angle.toInt();
   return setGaugeAngle(angle);
+}
+
+// This is a "virtual button" to start polling for train times.
+int enableTrainPolling(String unused){
+    Spark.publish("button-pressed");
+    last_button_push = millis();
+    return 1;
 }
 
 
