@@ -38,7 +38,7 @@ DEFAULTOPTS = {
   a: 'sf-muni',
   r: 'N',
   s: '4447',
-  direction_title: 'Inbound to Caltrain via Downtown',
+  dir: 'inbound',
 }
 
 CONFIG = YAML.load_file(options[:configfile])
@@ -51,13 +51,21 @@ def get_minutes(opts)
   predictions_in_mins = []
   xmldoc = Nokogiri::XML(fetch.body)
   xmldoc.remove_namespaces!()
-  #TODO: improve direction filtering. predictions have dirTag="N____I_F00" maybe?
-  xmldoc.css("predictions direction[title='#{opts[:direction_title]}'] prediction").each do |node|
-    predictions_in_mins << node['minutes'].to_i
+  xmldoc.css("predictions direction").each do |node|
+    p node['title']
+    # verify that our :dir option is in the name of this direction.
+    if node['title'].downcase().include?(opts[:dir].downcase())
+      node.css("prediction").each do |pnode|
+        predictions_in_mins << pnode['minutes'].to_i
+      end
+    end
+    #predictions_in_mins << node['minutes'].to_i
   end
   p predictions_in_mins.sort()
   if predictions_in_mins.length == 0
     # No predictions found. return an unreasonable number.
+    p "No predictions found:"
+    p fetch.body
     return [ 99 ]
   end
   return predictions_in_mins.sort()
