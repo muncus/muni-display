@@ -31,10 +31,16 @@ devicename:
     :a: 'sf-muni'
     :r: 'N'
     :s: '8888'
+    :dir: 'inbound'
 ```
 
 devicename is the key, and the hash below (with `:` prefix on key names, so it
 is symbolized properly) are arguments added to the nextbus xml feed request.
+
+`:dir` is not used by the nextbus api, but is used to filter between multiple
+`direction` tags present in api response. Matching is done with
+`String.include?` (after converting to all lowercase), so 'inbound' will match
+'Inbound to Destination'.
 
 ## To Do
 
